@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(voxsl)
+project(VoxSurf)
 
 INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/libsl-small
@@ -11,7 +11,7 @@ CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/path.h"
   )
 
-ADD_EXECUTABLE(voxsl
+ADD_EXECUTABLE(VoxSurf
   main.cpp
   libsl-small/LibSL/Math/Math.cpp
   libsl-small/LibSL/Math/Vertex.cpp
@@ -23,5 +23,5 @@ ADD_EXECUTABLE(voxsl
 )
  
 if(WIN32)
-target_link_libraries(voxsl shlwapi)
+target_link_libraries(VoxSurf shlwapi)
 endif(WIN32)

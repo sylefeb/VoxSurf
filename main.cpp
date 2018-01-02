@@ -67,7 +67,7 @@ void saveAsVox(const char *fname, const Array3D<bool>& voxs)
 
 // --------------------------------------------------------------
 
-inline bool isInTriangle(int i, int j, const v3u& tri, const v3i& p0, const v3i& p1, const v3i& p2, int& _depth)
+inline bool isInTriangle(int i, int j, const v3i& p0, const v3i& p1, const v3i& p2, int& _depth)
 {
   v2i delta_p0 = v2i(i, j) - v2i(p0);
   v2i delta_p1 = v2i(i, j) - v2i(p1);
@@ -147,7 +147,7 @@ void rasterize(
       if (isInTriangle(
         (i << FP_POW) + (1 << (FP_POW - 1)), // centered
         (j << FP_POW) + (1 << (FP_POW - 1)), // centered
-        tri, tripts[0], tripts[1], tripts[2], depth)) {
+        tripts[0], tripts[1], tripts[2], depth)) {
         v3i vx = swizzler.backward(v3i(i, j, depth >> FP_POW));
         // tag the voxel as occupied
         // NOTE: voxels are likely to be tagged multiple times (e.g. center exactly on edge, overlaps, etc.)
@@ -164,50 +164,31 @@ int main(int argc, char **argv)
 
   try {
 
-    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
-
-    // produce (fixed fp) integer points and triangles
+    // load triangle mesh
+    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));    
+    // produce (fixed fp) integer vertices and triangles
     std::vector<v3i> pts;
     std::vector<v3u> tris;
     {
       m4x4f boxtrsf = scaleMatrix(BOX_SCALE) * translationMatrix(v3f(0.5f))
         * scaleMatrix(v3f(0.95f) / tupleMax(mesh->bbox().extent()))
         * translationMatrix(-mesh->bbox().center());
-      // tranform and merge vertices
-      std::vector<std::pair<v3i, int> > tmppts;
-      tmppts.reserve(mesh->numVertices());
+      // transform vertices
+      pts.resize(mesh->numVertices());
       ForIndex(p, mesh->numVertices()) {
-        v3f pt = mesh->posAt(p);
+        v3f pt   = mesh->posAt(p);
         v3f bxpt = boxtrsf.mulPoint(pt);
-        v3i ipt = v3i(clamp(round(bxpt), v3f(0.0f), BOX_SCALE - v3f(1.0f)));
-        tmppts.push_back(make_pair(ipt, p));
+        v3i ipt  = v3i(clamp(round(bxpt), v3f(0.0f), BOX_SCALE - v3f(1.0f)));
+        pts[p]   = ipt;
       }
-      // -> sort
-      std::sort(tmppts.begin(), tmppts.end());
-      // -> merge, track indices and add
-      vector<int> indices;
-      indices.resize(mesh->numVertices());
-      pts.reserve(tmppts.size());
-      int i = 0;
-      v3i prev = tmppts.front().first;
-      pts.push_back(prev);
-      indices[tmppts.front().second] = 0;
-      ForRange(j, 1, tmppts.size() - 1) {
-        if (tmppts[j].first != prev) {
-          prev = tmppts[j].first;
-          pts.push_back(prev);
-        }
-        indices[tmppts[j].second] = (int)pts.size() - 1;
-      }
-      cerr << "points before: " << tmppts.size() << " after: " << pts.size() << endl;
-      // prepare triangles (rewrite indices)
+      // prepare triangles
       tris.reserve(mesh->numTriangles());
       ForIndex(t, mesh->numTriangles()) {
         v3u tri = mesh->triangleAt(t);
-        tris.push_back(v3u(indices[tri[0]], indices[tri[1]], indices[tri[2]]));
+        tris.push_back(tri);
       }
     }
-
+    
     // rasterize into voxels
     Array3D<bool> voxs(VOXEL_RESOLUTION, VOXEL_RESOLUTION, VOXEL_RESOLUTION);
     voxs.fill(false);
