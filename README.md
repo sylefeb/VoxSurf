@@ -2,7 +2,7 @@
 A simple, easily hackable C++ surface voxelizer (STL=>voxels)
 
 Takes as input a file 'model.stl' from the source directory.
-Outputs a voxel file names 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
+Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
 
 The basic principle is to rasterize triangles using three 2D axis aligned grids, using integer arithmetic (fixed floating point) for robust triangle interior checks.
 
