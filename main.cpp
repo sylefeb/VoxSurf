@@ -6,7 +6,7 @@
 /*
 
 Takes as input a file 'model.stl' from the source directory.
-Outputs a voxel file names 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
+Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
 
 Change VOXEL_RESOLUTION to fit your needs.
 
