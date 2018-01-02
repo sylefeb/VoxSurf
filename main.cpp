@@ -10,12 +10,12 @@ Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://e
 
 Change VOXEL_RESOLUTION to fit your needs.
 
-The basic principle is to rasterize triangles using three 2D axis 
+The basic principle is to rasterize triangles using three 2D axis
 aligned grids, using integer arithmetic (fixed floating point)
 for robust triangle interior checks.
 
 Very simple and quite efficient despite a straightforward implementation.
-Higher resolutions could easily be reached by not storing the 
+Higher resolutions could easily be reached by not storing the
 voxels as a 3D array of booleans (e.g. use blocking or an octree).
 
 */
@@ -72,9 +72,9 @@ inline bool isInTriangle(int i, int j, const v3u& tri, const v3i& p0, const v3i&
   v2i delta_p0 = v2i(i, j) - v2i(p0);
   v2i delta_p1 = v2i(i, j) - v2i(p1);
   v2i delta_p2 = v2i(i, j) - v2i(p2);
-  v2i delta10  = v2i(p1) - v2i(p0);
-  v2i delta21  = v2i(p2) - v2i(p1);
-  v2i delta02  = v2i(p0) - v2i(p2);
+  v2i delta10 = v2i(p1) - v2i(p0);
+  v2i delta21 = v2i(p2) - v2i(p1);
+  v2i delta02 = v2i(p0) - v2i(p2);
 
   int64_t c0 = (int64_t)delta_p0[0] * (int64_t)delta10[1] - (int64_t)delta_p0[1] * (int64_t)delta10[0];
   int64_t c1 = (int64_t)delta_p1[0] * (int64_t)delta21[1] - (int64_t)delta_p1[1] * (int64_t)delta21[0];
@@ -118,12 +118,12 @@ public:
 
 template <class S>
 void rasterize(
-  const v3u&                  tri, 
-  const std::vector<v3i>&     pts, 
+  const v3u&                  tri,
+  const std::vector<v3i>&     pts,
   Array3D<bool>&             _voxs)
 {
   const S swizzler;
-  v3i tripts[3] = { 
+  v3i tripts[3] = {
     swizzler.forward(pts[tri[0]]),
     swizzler.forward(pts[tri[1]]),
     swizzler.forward(pts[tri[2]])
@@ -145,8 +145,8 @@ void rasterize(
     for (int i = pixbx.minCorner()[0]; i <= pixbx.maxCorner()[0]; i++) {
       int depth;
       if (isInTriangle(
-        (i << FP_POW) + (1 << (FP_POW-1)), // centered
-        (j << FP_POW) + (1 << (FP_POW-1)), // centered
+        (i << FP_POW) + (1 << (FP_POW - 1)), // centered
+        (j << FP_POW) + (1 << (FP_POW - 1)), // centered
         tri, tripts[0], tripts[1], tripts[2], depth)) {
         v3i vx = swizzler.backward(v3i(i, j, depth >> FP_POW));
         // tag the voxel as occupied
@@ -162,10 +162,10 @@ void rasterize(
 int main(int argc, char **argv)
 {
 
-	try {
+  try {
 
-		TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
-	
+    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
+
     // produce (fixed fp) integer points and triangles
     std::vector<v3i> pts;
     std::vector<v3u> tris;
@@ -177,9 +177,9 @@ int main(int argc, char **argv)
       std::vector<std::pair<v3i, int> > tmppts;
       tmppts.reserve(mesh->numVertices());
       ForIndex(p, mesh->numVertices()) {
-        v3f pt   = mesh->posAt(p);
+        v3f pt = mesh->posAt(p);
         v3f bxpt = boxtrsf.mulPoint(pt);
-        v3i ipt  = v3i(clamp(round(bxpt), v3f(0.0f), BOX_SCALE - v3f(1.0f)));
+        v3i ipt = v3i(clamp(round(bxpt), v3f(0.0f), BOX_SCALE - v3f(1.0f)));
         tmppts.push_back(make_pair(ipt, p));
       }
       // -> sort
@@ -197,14 +197,14 @@ int main(int argc, char **argv)
           prev = tmppts[j].first;
           pts.push_back(prev);
         }
-        indices[tmppts[j].second] = (int)pts.size()-1;
+        indices[tmppts[j].second] = (int)pts.size() - 1;
       }
       cerr << "points before: " << tmppts.size() << " after: " << pts.size() << endl;
       // prepare triangles (rewrite indices)
       tris.reserve(mesh->numTriangles());
       ForIndex(t, mesh->numTriangles()) {
         v3u tri = mesh->triangleAt(t);
-        tris.push_back(v3u(indices[tri[0]],indices[tri[1]],indices[tri[2]]));
+        tris.push_back(v3u(indices[tri[0]], indices[tri[1]], indices[tri[2]]));
       }
     }
 
@@ -225,12 +225,11 @@ int main(int argc, char **argv)
     }
 
     // save the result
-    saveAsVox(SRC_PATH "/out.vox",voxs);
+    saveAsVox(SRC_PATH "/out.vox", voxs);
 
-	}
-	catch (Fatal& e) {
-		cerr << "[ERROR] " << e.message() << endl;
-	}
+  } catch (Fatal& e) {
+    cerr << "[ERROR] " << e.message() << endl;
+  }
 
 }
 
