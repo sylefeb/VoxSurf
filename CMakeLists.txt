@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 project(VoxSurf)
 
 INCLUDE_DIRECTORIES(
-  ${PROJECT_SOURCE_DIR}/libsl-small
-  ${PROJECT_SOURCE_DIR}/libsl-small/LibSL  
+  ${PROJECT_SOURCE_DIR}/LibSL-small
+  ${PROJECT_SOURCE_DIR}/LibSL-small/LibSL  
 )
 
 CONFIGURE_FILE(
@@ -13,13 +13,13 @@ CONFIGURE_FILE(
 
 ADD_EXECUTABLE(VoxSurf
   main.cpp
-  libsl-small/LibSL/Math/Math.cpp
-  libsl-small/LibSL/Math/Vertex.cpp
-  libsl-small/LibSL/Mesh/Mesh.cpp
-  libsl-small/LibSL/Mesh/MeshFormat_stl.cpp
-  libsl-small/LibSL/Mesh/VertexFormat_dynamic.cpp
-  libsl-small/LibSL/System/System.cpp
-  libsl-small/LibSL/CppHelpers/CppHelpers.cpp
+  LibSL-small/LibSL/Math/Math.cpp
+  LibSL-small/LibSL/Math/Vertex.cpp
+  LibSL-small/LibSL/Mesh/Mesh.cpp
+  LibSL-small/LibSL/Mesh/MeshFormat_stl.cpp
+  LibSL-small/LibSL/Mesh/VertexFormat_dynamic.cpp
+  LibSL-small/LibSL/System/System.cpp
+  LibSL-small/LibSL/CppHelpers/CppHelpers.cpp
 )
  
 if(WIN32)
