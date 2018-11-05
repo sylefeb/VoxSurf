@@ -53,7 +53,7 @@ void saveAsVox(const char *fname, const Array3D<bool>& voxs)
   fwrite(&sx, 4, 1, f);
   fwrite(&sy, 4, 1, f);
   fwrite(&sz, 4, 1, f);
-  ForIndex(i, sx) {
+  ForRangeReverse(i, sx - 1, 0) {
     ForIndex(j, sy) {
       ForRangeReverse(k, sz - 1, 0) {
         uchar pal = voxs.at(i, j, k) ? 127 : 255;
@@ -165,14 +165,18 @@ int main(int argc, char **argv)
   try {
 
     // load triangle mesh
-    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));    
+    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
     // produce (fixed fp) integer vertices and triangles
     std::vector<v3i> pts;
     std::vector<v3u> tris;
     {
-      m4x4f boxtrsf = scaleMatrix(BOX_SCALE) * translationMatrix(v3f(0.5f))
-        * scaleMatrix(v3f(0.95f) / tupleMax(mesh->bbox().extent()))
-        * translationMatrix(-mesh->bbox().center());
+      float factor = 0.95f;
+      m4x4f boxtrsf = scaleMatrix(BOX_SCALE)
+        * scaleMatrix(v3f(1.f) / tupleMax(mesh->bbox().extent()))
+        * translationMatrix((1 - factor) * 0.5f * mesh->bbox().extent())
+        * scaleMatrix(v3f(factor))
+        * translationMatrix(-mesh->bbox().minCorner());
+
       // transform vertices
       pts.resize(mesh->numVertices());
       ForIndex(p, mesh->numVertices()) {
@@ -188,9 +192,10 @@ int main(int argc, char **argv)
         tris.push_back(tri);
       }
     }
-    
+
     // rasterize into voxels
-    Array3D<bool> voxs(VOXEL_RESOLUTION, VOXEL_RESOLUTION, VOXEL_RESOLUTION);
+    v3u resolution(mesh->bbox().extent() / tupleMax(mesh->bbox().extent()) * float(VOXEL_RESOLUTION));
+    Array3D<bool> voxs(resolution);
     voxs.fill(false);
     {
       Timer tm("rasterization");
