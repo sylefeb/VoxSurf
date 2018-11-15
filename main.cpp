@@ -170,9 +170,11 @@ int main(int argc, char **argv)
     std::vector<v3i> pts;
     std::vector<v3u> tris;
     {
+      float factor = 0.95f;
       m4x4f boxtrsf = scaleMatrix(BOX_SCALE)
-        * scaleMatrix(v3f(0.95f) / tupleMax(mesh->bbox().extent()))
-        * translationMatrix(mesh->bbox().extent() * 0.025f)
+        * scaleMatrix(v3f(1.f) / tupleMax(mesh->bbox().extent()))
+        * translationMatrix((1 - factor) * 0.5f * mesh->bbox().extent())
+        * scaleMatrix(v3f(factor))
         * translationMatrix(-mesh->bbox().minCorner());
 
       // transform vertices
