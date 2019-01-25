@@ -9,6 +9,7 @@ Takes as input a file 'model.stl' from the source directory.
 Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
 
 Change VOXEL_RESOLUTION to fit your needs.
+Set    VOXEL_INSIDE to one to fill in the interior
 
 The basic principle is to rasterize triangles using three 2D axis
 aligned grids, using integer arithmetic (fixed floating point)
@@ -24,6 +25,7 @@ voxels as a 3D array of booleans (e.g. use blocking or an octree).
 
 #include <iostream>
 #include <algorithm>
+#include <queue>
 using namespace std;
 
 #include "path.h"
@@ -31,6 +33,7 @@ using namespace std;
 // --------------------------------------------------------------
 
 #define VOXEL_RESOLUTION 128
+#define VOXEL_INSIDE     0
 
 // --------------------------------------------------------------
 
@@ -159,6 +162,44 @@ void rasterize(
 
 // --------------------------------------------------------------
 
+void fillInside(Array3D<bool>& _voxs)
+{
+  const v3i neighs[6] = { v3i(1,0,0),v3i(-1,0,0),v3i(0,1,0),v3i(0,-1,0),v3i(0,0,1),v3i(0,0,-1) };
+  // track voxels that are outside
+  Array3D<bool> outside(VOXEL_RESOLUTION, VOXEL_RESOLUTION, VOXEL_RESOLUTION);
+  outside.fill(false);
+  // assumes origin is outside
+  std::queue<v3i> q;
+  q.push(v3i(0, 0, 0));
+  while (!q.empty()) {
+    // pop next
+    v3i cur = q.front();
+    q.pop();
+    // tag as outside
+    outside.at(cur[0], cur[1], cur[2]) = true;
+    // propagate
+    ForIndex(i, 6) {
+      v3i n = cur + neighs[i];
+      if ( n[0] >= 0 && n[0] < VOXEL_RESOLUTION
+        && n[1] >= 0 && n[1] < VOXEL_RESOLUTION 
+        && n[2] >= 0 && n[2] < VOXEL_RESOLUTION) {
+        if (!_voxs.at(n[0], n[1], n[2]) && !outside.at(n[0], n[1], n[2])) {
+          outside.at(n[0], n[1], n[2]) = true;
+          q.push(n);
+        }
+      }
+    }
+  }
+  // set inner voxels
+  ForArray3D(_voxs, i, j, k) {
+    if (!_voxs.at(i, j, k)) {
+      _voxs.at(i, j, k) = !outside.at(i, j, k);
+    }
+  }
+}
+
+// --------------------------------------------------------------
+
 int main(int argc, char **argv)
 {
 
@@ -205,8 +246,27 @@ int main(int argc, char **argv)
       cerr << endl;
     }
 
+    // add inner voxels
+#if VOXEL_INSIDE
+    {
+      Timer tm("flood fill");
+      cerr << "filling in/out ... ";
+      fillInside(voxs);
+      cerr << " done." << endl;
+    }
+#endif
+
     // save the result
     saveAsVox(SRC_PATH "/out.vox", voxs);
+
+    // report some stats
+    int num_in_vox = 0;
+    ForArray3D(voxs, i, j, k) {
+      if (voxs.at(i, j, k)) {
+        num_in_vox++;
+      }
+    }
+    cerr << "number of set voxels: " << num_in_vox << endl;
 
   } catch (Fatal& e) {
     cerr << "[ERROR] " << e.message() << endl;
