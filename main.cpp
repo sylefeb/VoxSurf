@@ -3,13 +3,16 @@
 // A simple, easily hackable CPU surface voxelizer
 // MIT-license
 // (c) Sylvain Lefebvre, https://github.com/sylefeb
+// --------------------------------------------------------------
+
 /*
 
 Takes as input a file 'model.stl' from the source directory.
 Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
 
-Change VOXEL_RESOLUTION to fit your needs.
-Set    VOXEL_INSIDE to one to fill in the interior
+Change VOXEL_RESOLUTION  to fit your needs.
+Set    VOXEL_FILL_INSIDE to 1 to fill in the interior
+Set    VOXEL_ROBUST_FILL to 1 to fill in the interior using a voting scheme (more robust, slower)
 
 The basic principle is to rasterize triangles using three 2D axis
 aligned grids, using integer arithmetic (fixed floating point)
@@ -18,6 +21,10 @@ for robust triangle interior checks.
 Very simple and quite efficient despite a straightforward implementation.
 Higher resolutions could easily be reached by not storing the
 voxels as a 3D array of booleans (e.g. use blocking or an octree).
+
+For the inside fill to work properly, the mesh has to be perfectly
+watertight, with exactly matching vertices between neighboring 
+verticies.
 
 */
 
@@ -34,6 +41,7 @@ using namespace std;
 
 #define VOXEL_RESOLUTION  128
 #define VOXEL_FILL_INSIDE 1
+#define VOXEL_ROBUST_FILL 0
 
 // --------------------------------------------------------------
 
@@ -41,10 +49,13 @@ using namespace std;
 #define FP_SCALE  (1<<FP_POW)
 #define BOX_SCALE v3f(VOXEL_RESOLUTION*FP_SCALE)
 
-#define ALONG_X 1
-#define ALONG_Y 2
-#define ALONG_Z 4
-#define INSIDE  8
+#define ALONG_X  1
+#define ALONG_Y  2
+#define ALONG_Z  4
+#define INSIDE   8
+#define INSIDE_X 16
+#define INSIDE_Y 32
+#define INSIDE_Z 64
 
 // --------------------------------------------------------------
 
@@ -72,13 +83,7 @@ void saveAsVox(const char *fname, const Array3D<uchar>& voxs)
         uchar pal = v != 0 ? 127 : 255;
         if (v == INSIDE) {
           pal = 123;
-        }/* else if (v == ALONG_X) {
-          pal = 124;
-        } else if (v == ALONG_Y) {
-          pal = 125;
-        } else if (v == ALONG_Z) {
-          pal = 126;
-        }*/
+        }
         fwrite(&pal, sizeof(uchar), 1, f);
       }
     }
@@ -185,6 +190,70 @@ void rasterize(
 
 // --------------------------------------------------------------
 
+// This version is more robust by using all three direction
+// and voting among them to decide what is filled or not
+void fillInsideVoting(Array3D<uchar>& _voxs)
+{
+  // along x
+  ForIndex(k, _voxs.zsize()) {
+    ForIndex(j, _voxs.ysize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.xsize()) {
+        if (_voxs.at(i, j, k) & ALONG_X) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(i, j, k) |= INSIDE_X;
+        }
+      }
+    }
+  }
+  // along y
+  ForIndex(k, _voxs.zsize()) {
+    ForIndex(j, _voxs.xsize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.ysize()) {
+        if (_voxs.at(j, i, k) & ALONG_Y) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(j, i, k) |= INSIDE_Y;
+        }
+      }
+    }
+  }
+  // along z
+  ForIndex(k, _voxs.ysize()) {
+    ForIndex(j, _voxs.xsize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.zsize()) {
+        if (_voxs.at(j, k, i) & ALONG_Z) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(j, k, i) |= INSIDE_Z;
+        }
+      }
+    }
+  }
+  // voting
+  ForArray3D(_voxs, i, j, k) {
+    uchar v = _voxs.at(i, j, k);
+    int votes =
+      (  (v & INSIDE_X) ? 1 : 0)
+      + ((v & INSIDE_Y) ? 1 : 0)
+      + ((v & INSIDE_Z) ? 1 : 0);
+    // clean
+    _voxs.at(i, j, k) &= ~(INSIDE_X | INSIDE_Y | INSIDE_Z);
+    if (votes > 1) {
+      // tag as inside
+      _voxs.at(i, j, k) |= INSIDE;
+    }
+  }
+}
+
+// --------------------------------------------------------------
+
 void fillInside(Array3D<uchar>& _voxs)
 {
   ForIndex(k, _voxs.zsize()) {
@@ -210,7 +279,7 @@ int main(int argc, char **argv)
   try {
 
     // load triangle mesh
-    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));    
+    TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
     // produce (fixed fp) integer vertices and triangles
     std::vector<v3i> pts;
     std::vector<v3u> tris;
@@ -255,7 +324,11 @@ int main(int argc, char **argv)
     {
       Timer tm("fill");
       cerr << "filling in/out ... ";
+#if VOXEL_ROBUST_FILL
+      fillInsideVoting(voxs);
+#else
       fillInside(voxs);
+#endif
       cerr << " done." << endl;
     }
 #endif
