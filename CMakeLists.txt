@@ -3,7 +3,8 @@ project(VoxSurf)
 
 INCLUDE_DIRECTORIES(
   ${PROJECT_SOURCE_DIR}/LibSL-small
-  ${PROJECT_SOURCE_DIR}/LibSL-small/LibSL  
+  ${PROJECT_SOURCE_DIR}/LibSL-small/src/
+  ${PROJECT_SOURCE_DIR}/LibSL-small/src/LibSL  
 )
 
 CONFIGURE_FILE(
@@ -13,13 +14,13 @@ CONFIGURE_FILE(
 
 ADD_EXECUTABLE(VoxSurf
   main.cpp
-  LibSL-small/LibSL/Math/Math.cpp
-  LibSL-small/LibSL/Math/Vertex.cpp
-  LibSL-small/LibSL/Mesh/Mesh.cpp
-  LibSL-small/LibSL/Mesh/MeshFormat_stl.cpp
-  LibSL-small/LibSL/Mesh/VertexFormat_dynamic.cpp
-  LibSL-small/LibSL/System/System.cpp
-  LibSL-small/LibSL/CppHelpers/CppHelpers.cpp
+  LibSL-small/src/LibSL/Math/Math.cpp
+  LibSL-small/src/LibSL/Math/Vertex.cpp
+  LibSL-small/src/LibSL/Mesh/Mesh.cpp
+  LibSL-small/src/LibSL/Mesh/MeshFormat_stl.cpp
+  LibSL-small/src/LibSL/Mesh/VertexFormat_dynamic.cpp
+  LibSL-small/src/LibSL/System/System.cpp
+  LibSL-small/src/LibSL/CppHelpers/CppHelpers.cpp
 )
  
 if(WIN32)

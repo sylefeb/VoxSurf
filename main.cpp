@@ -3,12 +3,16 @@
 // A simple, easily hackable CPU surface voxelizer
 // MIT-license
 // (c) Sylvain Lefebvre, https://github.com/sylefeb
+// --------------------------------------------------------------
+
 /*
 
 Takes as input a file 'model.stl' from the source directory.
 Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
 
-Change VOXEL_RESOLUTION to fit your needs.
+Change VOXEL_RESOLUTION  to fit your needs.
+Set    VOXEL_FILL_INSIDE to 1 to fill in the interior
+Set    VOXEL_ROBUST_FILL to 1 to fill in the interior using a voting scheme (more robust, slower)
 
 The basic principle is to rasterize triangles using three 2D axis
 aligned grids, using integer arithmetic (fixed floating point)
@@ -18,19 +22,26 @@ Very simple and quite efficient despite a straightforward implementation.
 Higher resolutions could easily be reached by not storing the
 voxels as a 3D array of booleans (e.g. use blocking or an octree).
 
+For the inside fill to work properly, the mesh has to be perfectly
+watertight, with exactly matching vertices between neighboring 
+verticies.
+
 */
 
 #include <LibSL/LibSL.h>
 
 #include <iostream>
 #include <algorithm>
+#include <queue>
 using namespace std;
 
 #include "path.h"
 
 // --------------------------------------------------------------
 
-#define VOXEL_RESOLUTION 128
+#define VOXEL_RESOLUTION  128
+#define VOXEL_FILL_INSIDE 1
+#define VOXEL_ROBUST_FILL 0
 
 // --------------------------------------------------------------
 
@@ -38,13 +49,25 @@ using namespace std;
 #define FP_SCALE  (1<<FP_POW)
 #define BOX_SCALE v3f(VOXEL_RESOLUTION*FP_SCALE)
 
+#define ALONG_X  1
+#define ALONG_Y  2
+#define ALONG_Z  4
+#define INSIDE   8
+#define INSIDE_X 16
+#define INSIDE_Y 32
+#define INSIDE_Z 64
+
 // --------------------------------------------------------------
 
 // saves a voxel file (.vox format, can be imported by MagicaVoxel)
-void saveAsVox(const char *fname, const Array3D<bool>& voxs)
+void saveAsVox(const char *fname, const Array3D<uchar>& voxs)
 {
   Array<v3b> palette(256); // RGB palette
   palette.fill(0);
+  palette[123] = v3b(127, 0, 127);
+  palette[124] = v3b(255, 0, 0);
+  palette[125] = v3b(0, 255, 0);
+  palette[126] = v3b(0, 0, 255);
   palette[127] = v3b(255, 255, 255);
   FILE *f;
   f = fopen(fname, "wb");
@@ -56,7 +79,11 @@ void saveAsVox(const char *fname, const Array3D<bool>& voxs)
   ForRangeReverse(i, sx - 1, 0) {
     ForIndex(j, sy) {
       ForRangeReverse(k, sz - 1, 0) {
-        uchar pal = voxs.at(i, j, k) ? 127 : 255;
+        uchar v   = voxs.at(i, j, k);
+        uchar pal = v != 0 ? 127 : 255;
+        if (v == INSIDE) {
+          pal = 123;
+        }
         fwrite(&pal, sizeof(uchar), 1, f);
       }
     }
@@ -98,20 +125,23 @@ class swizzle_xyz
 public:
   inline v3i forward(const v3i& v)  const { return v; }
   inline v3i backward(const v3i& v) const { return v; }
+  inline int along() const { return ALONG_Z; }
 };
 
 class swizzle_zxy
 {
 public:
-  inline v3i forward(const v3i& v)  const { return v3i(v[2], v[0], v[1]); }
-  inline v3i backward(const v3i& v) const { return v3i(v[1], v[2], v[0]); }
+  inline v3i   forward(const v3i& v)  const { return v3i(v[2], v[0], v[1]); }
+  inline v3i   backward(const v3i& v) const { return v3i(v[1], v[2], v[0]); }
+  inline uchar along() const { return ALONG_Y; }
 };
 
 class swizzle_yzx
 {
 public:
-  inline v3i forward(const v3i& v)  const { return v3i(v[1], v[2], v[0]); }
-  inline v3i backward(const v3i& v) const { return v3i(v[2], v[0], v[1]); }
+  inline v3i   forward(const v3i& v)  const { return v3i(v[1], v[2], v[0]); }
+  inline v3i   backward(const v3i& v) const { return v3i(v[2], v[0], v[1]); }
+  inline uchar along() const { return ALONG_X; }
 };
 
 // --------------------------------------------------------------
@@ -120,7 +150,7 @@ template <class S>
 void rasterize(
   const v3u&                  tri,
   const std::vector<v3i>&     pts,
-  Array3D<bool>&             _voxs)
+  Array3D<uchar>&             _voxs)
 {
   const S swizzler;
   v3i tripts[3] = {
@@ -150,8 +180,92 @@ void rasterize(
         tripts[0], tripts[1], tripts[2], depth)) {
         v3i vx = swizzler.backward(v3i(i, j, depth >> FP_POW));
         // tag the voxel as occupied
-        // NOTE: voxels are likely to be tagged multiple times (e.g. center exactly on edge, overlaps, etc.)
-        _voxs.at(vx[0], vx[1], vx[2]) = true;
+        // NOTE: voxels are likely to be hit multiple times (e.g. thin features)
+        //       we flip the bit every time a hit occurs in a voxel
+        _voxs.at(vx[0], vx[1], vx[2]) = ( _voxs.at(vx[0], vx[1], vx[2]) ^ swizzler.along() );
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------
+
+// This version is more robust by using all three direction
+// and voting among them to decide what is filled or not
+void fillInsideVoting(Array3D<uchar>& _voxs)
+{
+  // along x
+  ForIndex(k, _voxs.zsize()) {
+    ForIndex(j, _voxs.ysize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.xsize()) {
+        if (_voxs.at(i, j, k) & ALONG_X) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(i, j, k) |= INSIDE_X;
+        }
+      }
+    }
+  }
+  // along y
+  ForIndex(k, _voxs.zsize()) {
+    ForIndex(j, _voxs.xsize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.ysize()) {
+        if (_voxs.at(j, i, k) & ALONG_Y) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(j, i, k) |= INSIDE_Y;
+        }
+      }
+    }
+  }
+  // along z
+  ForIndex(k, _voxs.ysize()) {
+    ForIndex(j, _voxs.xsize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.zsize()) {
+        if (_voxs.at(j, k, i) & ALONG_Z) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(j, k, i) |= INSIDE_Z;
+        }
+      }
+    }
+  }
+  // voting
+  ForArray3D(_voxs, i, j, k) {
+    uchar v = _voxs.at(i, j, k);
+    int votes =
+      (  (v & INSIDE_X) ? 1 : 0)
+      + ((v & INSIDE_Y) ? 1 : 0)
+      + ((v & INSIDE_Z) ? 1 : 0);
+    // clean
+    _voxs.at(i, j, k) &= ~(INSIDE_X | INSIDE_Y | INSIDE_Z);
+    if (votes > 1) {
+      // tag as inside
+      _voxs.at(i, j, k) |= INSIDE;
+    }
+  }
+}
+
+// --------------------------------------------------------------
+
+void fillInside(Array3D<uchar>& _voxs)
+{
+  ForIndex(k, _voxs.zsize()) {
+    ForIndex(j, _voxs.ysize()) {
+      bool inside = false;
+      ForIndex(i, _voxs.xsize()) {
+        if (_voxs.at(i, j, k) & ALONG_X) {
+          inside = !inside;
+        }
+        if (inside) {
+          _voxs.at(i, j, k) |= INSIDE;
+        }
       }
     }
   }
@@ -195,8 +309,8 @@ int main(int argc, char **argv)
 
     // rasterize into voxels
     v3u resolution(mesh->bbox().extent() / tupleMax(mesh->bbox().extent()) * float(VOXEL_RESOLUTION));
-    Array3D<bool> voxs(resolution);
-    voxs.fill(false);
+    Array3D<uchar> voxs(resolution);
+    voxs.fill(0);
     {
       Timer tm("rasterization");
       Console::progressTextInit((int)tris.size());
@@ -210,8 +324,31 @@ int main(int argc, char **argv)
       cerr << endl;
     }
 
+    // add inner voxels
+#if VOXEL_FILL_INSIDE
+    {
+      Timer tm("fill");
+      cerr << "filling in/out ... ";
+#if VOXEL_ROBUST_FILL
+      fillInsideVoting(voxs);
+#else
+      fillInside(voxs);
+#endif
+      cerr << " done." << endl;
+    }
+#endif
+
     // save the result
     saveAsVox(SRC_PATH "/out.vox", voxs);
+
+    // report some stats
+    int num_in_vox = 0;
+    ForArray3D(voxs, i, j, k) {
+      if (voxs.at(i, j, k) > 0) {
+        num_in_vox++;
+      }
+    }
+    cerr << "number of set voxels: " << num_in_vox << endl;
 
   } catch (Fatal& e) {
     cerr << "[ERROR] " << e.message() << endl;
