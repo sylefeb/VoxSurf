@@ -8,11 +8,13 @@
 /*
 
 Takes as input a file 'model.stl' from the source directory.
-Outputs a voxel file named 'out.vox' that can be read by 'MagicaVoxel' https://ephtracy.github.io/
+Outputs a voxel file named 'out.slab.vox' that can be imported 
+by 'MagicaVoxel' https://ephtracy.github.io/
 
 Change VOXEL_RESOLUTION  to fit your needs.
 Set    VOXEL_FILL_INSIDE to 1 to fill in the interior
-Set    VOXEL_ROBUST_FILL to 1 to fill in the interior using a voting scheme (more robust, slower)
+Set    VOXEL_ROBUST_FILL to 1 to fill in the interior using 
+       a voting scheme (more robust, slower)
 
 The basic principle is to rasterize triangles using three 2D axis
 aligned grids, using integer arithmetic (fixed floating point)
@@ -59,7 +61,7 @@ using namespace std;
 
 // --------------------------------------------------------------
 
-// saves a voxel file (.vox format, can be imported by MagicaVoxel)
+// saves a voxel file (.slab.vox format, can be imported by MagicaVoxel)
 void saveAsVox(const char *fname, const Array3D<uchar>& voxs)
 {
   Array<v3b> palette(256); // RGB palette
@@ -339,7 +341,7 @@ int main(int argc, char **argv)
 #endif
 
     // save the result
-    saveAsVox(SRC_PATH "/out.vox", voxs);
+    saveAsVox(SRC_PATH "/out.slab.vox", voxs);
 
     // report some stats
     int num_in_vox = 0;
