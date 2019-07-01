@@ -17,6 +17,18 @@ Here is a relatively large model voxelized at 1024^3 in ~1.5 seconds on a Core i
 
 ![voxels](vox1024.jpg)
 
+## Compiling
+
+Clone the main repo, then enter the directory and type:<br>
+```
+git submodule init
+git submodule update
+cmake .
+make
+```
+
+Tested with Viusal Studio 2017 and gcc 6.2.1
+
 ## Links
  * CUDA voxelization (GPU, fast) https://github.com/Forceflow/cuda_voxelizer
  * Michael Schwarz and Hans-Peter Seidel paper on the topic http://research.michael-schwarz.com/publ/files/vox-siga10.pdf
