@@ -1,28 +1,27 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.10)
 project(VoxSurf)
 
-INCLUDE_DIRECTORIES(
-  ${PROJECT_SOURCE_DIR}/LibSL-small
-  ${PROJECT_SOURCE_DIR}/LibSL-small/src/
-  ${PROJECT_SOURCE_DIR}/LibSL-small/src/LibSL  
-)
+add_subdirectory(LibSL-small)
 
-CONFIGURE_FILE(
-  "${CMAKE_CURRENT_SOURCE_DIR}/path.h.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/path.h"
-  )
+add_executable(VoxSurf main.cpp)
+target_compile_features(VoxSurf PRIVATE cxx_std_17)
+add_library(voxelizer STATIC voxelizer.cpp)
+target_compile_features(voxelizer PRIVATE cxx_std_17)
+target_link_libraries(voxelizer PUBLIC LibSL)
+set_target_properties(LibSL PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+set_target_properties(voxelizer PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
-ADD_EXECUTABLE(VoxSurf
-  main.cpp
-  LibSL-small/src/LibSL/Math/Math.cpp
-  LibSL-small/src/LibSL/Math/Vertex.cpp
-  LibSL-small/src/LibSL/Mesh/Mesh.cpp
-  LibSL-small/src/LibSL/Mesh/MeshFormat_stl.cpp
-  LibSL-small/src/LibSL/Mesh/VertexFormat_dynamic.cpp
-  LibSL-small/src/LibSL/System/System.cpp
-  LibSL-small/src/LibSL/CppHelpers/CppHelpers.cpp
-)
- 
-if(WIN32)
-target_link_libraries(VoxSurf shlwapi)
-endif(WIN32)
+set(XTL_INCLUDE_DIRS xtl/include xtensor/include xtensor-blas/include)
+find_package(HDF5 REQUIRED COMPONENTS CXX)
+target_include_directories(VoxSurf PRIVATE ${HDF5_INCLUDE_DIRS})
+target_link_libraries(VoxSurf PRIVATE voxelizer ${HDF5_LIBRARIES})
+
+find_package(Python COMPONENTS Interpreter NumPy)
+add_subdirectory(pybind11)
+pybind11_add_module(pyvoxel pyvoxel.cpp)
+target_compile_features(pyvoxel PUBLIC cxx_std_14)
+target_include_directories(
+  pyvoxel PRIVATE ${Python_INCLUDE_DIRS} ${Python_NumPy_INCLUDE_DIRS}
+                  ${XTL_INCLUDE_DIRS} xtensor-python/include)
+target_link_libraries(pyvoxel PUBLIC voxelizer)
+install(TARGETS pyvoxel DESTINATION ${Python_SITELIB})
