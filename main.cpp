@@ -53,28 +53,19 @@ static void save_xt_volume(const std::string &output_file,
 int main(int argc, char **argv) {
   xt::xarray<float> voxels;
   if (argc >= 2) {
-    voxels = Voxelizer::voxelize_stl(argv[1], 512);
+    voxels = Voxelizer::voxelize_stl(argv[1], 128);
   } else {
     Voxelizer::SimpleMesh mesh;
-    xt::xarray<float> cube_verts = {{-1.0, 1.0, 1.0},  {1.0, -1.0, 1.0},
-                                    {1.0, 1.0, 1.0},   {-1.0, -1.0, -1.0},
-                                    {1.0, -1.0, -1.0}, {-1.0, -1.0, 1.0},
-                                    {-1.0, 1.0, -1.0}, {1.0, 1.0, -1.0}};
+    xt::xarray<float> cube_verts = {{-1.1, 1.1, 1.1},  {1.1, -1.1, 1.1},
+                                    {1.1, 1.1, 1.1},   {-1.1, -1.1, -1.1},
+                                    {1.1, -1.1, -1.1}, {-1.1, -1.1, 1.1},
+                                    {-1.1, 1.1, -1.1}, {1.1, 1.1, -1.1}};
     mesh.points = cube_verts;
     mesh.indices = {{0, 1, 2}, {1, 3, 4}, {5, 6, 3}, {7, 3, 6},
                     {2, 4, 7}, {0, 7, 6}, {0, 5, 1}, {1, 5, 3},
                     {5, 0, 6}, {7, 4, 3}, {2, 1, 4}, {0, 2, 7}};
 
     mesh.bounds = {{-1.51, -1.51, -1.51}, {1.51, 1.51, 1.51}};
-    for (auto s : mesh.points.shape())
-      std::cout << s << ", ";
-    std::cout << std::endl;
-    for (auto s : mesh.indices.shape())
-      std::cout << s << ", ";
-    std::cout << std::endl;
-    for (auto s : mesh.bounds.shape())
-      std::cout << s << ", ";
-    std::cout << std::endl;
     voxels = Voxelizer::voxelize_mesh(mesh, 512);
   }
   save_xt_volume("out.h5", voxels);

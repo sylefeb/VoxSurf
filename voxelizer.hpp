@@ -22,10 +22,13 @@ struct SimpleMesh {
 };
 
 xt::xarray<float> voxelize_mesh(const SimpleMesh &mesh,
-                                uint32_t voxel_resolution = 256,
+                                xt::xarray<int> voxel_resolution = {256, 256,
+                                                                    256},
                                 VoxelFill voxel_fill = VoxelFill::None);
 
 xt::xarray<float> voxelize_stl(const std::string filename,
-                               uint32_t voxel_resolution = 256,
+                               xt::xarray<int> voxel_resolution = {256, 256,
+                                                                   256},
+                               xt::xarray<float> bounds = {},
                                VoxelFill voxel_fill = VoxelFill::None);
 } // namespace Voxelizer

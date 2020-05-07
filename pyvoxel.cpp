@@ -26,6 +26,7 @@ inline Voxelizer::VoxelFill str2vfill(const std::string &voxel_fill) {
 
 inline xt::pyarray<float> voxelize_stl(const std::string &filename,
                                        const int resolution,
+                                       const xt::pyarray<float> &bounds = {},
                                        const std::string &voxel_fill = "None") {
   return Voxelizer::voxelize_stl(filename, resolution, str2vfill(voxel_fill));
 }
@@ -39,15 +40,6 @@ inline xt::pyarray<float> voxelize(const xt::pyarray<float> &vertices,
   mesh.points = vertices;
   mesh.indices = triangle_indices;
   mesh.bounds = bounds;
-  for (auto s : mesh.points.shape())
-    std::cout << s << ", ";
-  std::cout << std::endl;
-  for (auto s : mesh.indices.shape())
-    std::cout << s << ", ";
-  std::cout << std::endl;
-  for (auto s : mesh.bounds.shape())
-    std::cout << s << ", ";
-  std::cout << std::endl;
   return Voxelizer::voxelize_mesh(mesh, resolution, str2vfill(voxel_fill));
 }
 
@@ -60,8 +52,10 @@ PYBIND11_MODULE(pyvoxel, m) {
     )pbdoc";
 
   m.def("voxelize_stl", voxelize_stl,
-        "Loads an stl file and voxelizes it fully.", "filename"_a,
-        "voxel_resolution"_a, "voxel_fill"_a = "None");
+        "Loads an stl file and voxelizes. It will voxelize the whole file if "
+        "bounds is left empty, or the specified bounds otherwise.",
+        "filename"_a, "voxel_resolution"_a, "bounds"_a = xt::xarray<float>(),
+        "voxel_fill"_a = "None");
 
   m.def("voxelize", voxelize, "Voxelizes the mesh within the specified bounds.",
         "vertices"_a, "triangle_indices"_a, "bounds"_a, "voxel_resolution"_a,

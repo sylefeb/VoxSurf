@@ -199,8 +199,6 @@ template <typename T> xt::xarray<T> sl2xt(Array3D<T> voxels) {
 static xt::xarray<float> voxelize(const std::vector<v3i> &pts,
                                   const std::vector<v3u> &tris, v3u resolution,
                                   VoxelFill voxel_fill) {
-  std::cout << "VOXELIZEE " << resolution << " " << pts.size() << " "
-            << tris.size() << "\n ";
   Array3D<uchar> voxs(resolution);
   voxs.fill(0);
   {
@@ -232,14 +230,21 @@ template <typename T> auto xt2v3(xt::xarray<T> v) {
 }
 
 xt::xarray<float> voxelize_mesh(const SimpleMesh &mesh,
-                                uint32_t voxel_resolution,
+                                xt::xarray<int> voxel_resolution,
                                 VoxelFill voxel_fill) {
+
+  v3u resolution(xt2v3<uint>(mesh.extent() / xt::amax(mesh.extent())[0] *
+                             float(xt::amax(voxel_resolution)[0])));
+  if (voxel_resolution.shape().size() == 3) {
+    resolution = xt2v3<uint>(voxel_resolution);
+  }
+  auto max_resolution = tupleMax(resolution);
 
   // produce (fixed fp) integer vertices and triangles
   std::vector<v3i> pts;
   std::vector<v3u> tris;
   {
-    const v3f box_scale = v3f(voxel_resolution * FP_SCALE);
+    const v3f box_scale = v3f(max_resolution * FP_SCALE);
 
     float factor = 0.95f;
 
@@ -266,33 +271,56 @@ xt::xarray<float> voxelize_mesh(const SimpleMesh &mesh,
     }
   }
 
-  // rasterize into voxels
-  v3u resolution(xt2v3<uint>(mesh.extent() / xt::amax(mesh.extent())[0] *
-                             float(voxel_resolution)));
-
   return std::move(voxelize(pts, tris, resolution, voxel_fill));
 }
 
 xt::xarray<float> voxelize_stl(const std::string stl_file,
-                               uint32_t voxel_resolution,
-                               VoxelFill voxel_fill) {
+                               xt::xarray<int> voxel_resolution,
+                               xt::xarray<float> bounds, VoxelFill voxel_fill) {
+
   // LibSL needs to register the mesh format, but it doesn't do it
   // automatically from the library, so we create this dummy instance
   LibSL::Mesh::MeshFormat_stl _plugin_register_workaround;
   // load triangle mesh
   TriangleMesh_Ptr mesh(loadTriangleMesh(stl_file.c_str()));
+
+  // Select bounds. Either we use the bounds in the mesh itself
+  // or the bounds passed in as a parameter (empty by default,
+  // meaning "use the bounds in the mesh")
+  LibSL::Geometry::AABox bbox;
+  {
+    std::array<v3f, 2> tmpbbox;
+    if (bounds.shape().size() == 0) {
+      tmpbbox[0] = mesh->bbox().minCorner();
+      tmpbbox[1] = mesh->bbox().maxCorner();
+    } else {
+      assert(bounds.shape()[0] == 2 && bounds.shape()[1] == 3);
+      tmpbbox[0] = xt2v3<float>(xt::view(bounds, 0, xt::all()));
+      tmpbbox[1] = xt2v3<float>(xt::view(bounds, 1, xt::all()));
+    }
+    bbox = LibSL::Geometry::AABox(tmpbbox[0], tmpbbox[1]);
+  }
+
+  v3u resolution(bbox.extent() / tupleMax(bbox.extent()) *
+                 float(xt::amax(voxel_resolution)[0]));
+
+  if (voxel_resolution.shape().size() == 3) {
+    resolution = xt2v3<uint>(voxel_resolution);
+  }
+  auto max_resolution = tupleMax(resolution);
+
   // produce (fixed fp) integer vertices and triangles
   std::vector<v3i> pts;
   std::vector<v3u> tris;
   {
-    const v3f box_scale = v3f(voxel_resolution * FP_SCALE);
+    const v3f box_scale = v3f(max_resolution * FP_SCALE);
 
     float factor = 0.95f;
-    m4x4f boxtrsf =
-        scaleMatrix(box_scale) *
-        scaleMatrix(v3f(1.f) / tupleMax(mesh->bbox().extent())) *
-        translationMatrix((1 - factor) * 0.5f * mesh->bbox().extent()) *
-        scaleMatrix(v3f(factor)) * translationMatrix(-mesh->bbox().minCorner());
+    m4x4f boxtrsf = scaleMatrix(box_scale) *
+                    scaleMatrix(v3f(1.f) / tupleMax(bbox.extent())) *
+                    translationMatrix((1 - factor) * 0.5f * bbox.extent()) *
+                    scaleMatrix(v3f(factor)) *
+                    translationMatrix(-bbox.minCorner());
 
     // transform vertices
     pts.resize(mesh->numVertices());
@@ -309,10 +337,6 @@ xt::xarray<float> voxelize_stl(const std::string stl_file,
       tris.push_back(tri);
     }
   }
-
-  // rasterize into voxels
-  v3u resolution(mesh->bbox().extent() / tupleMax(mesh->bbox().extent()) *
-                 float(voxel_resolution));
 
   return std::move(voxelize(pts, tris, resolution, voxel_fill));
 }
