@@ -2,19 +2,23 @@ cmake_minimum_required(VERSION 3.10)
 project(VoxSurf)
 
 add_subdirectory(LibSL-small)
+set(XTL_INCLUDE_DIRS xtl/include xtensor/include xtensor-blas/include)
 
-add_executable(VoxSurf main.cpp)
-target_compile_features(VoxSurf PRIVATE cxx_std_17)
+find_package(HDF5 COMPONENTS CXX)
+if (${HDF5_FOUND})
+  add_executable(VoxSurf main.cpp)
+  target_compile_features(VoxSurf PRIVATE cxx_std_17)
+  target_include_directories(VoxSurf PRIVATE ${HDF5_INCLUDE_DIRS})
+  target_link_libraries(VoxSurf PRIVATE voxelizer ${HDF5_LIBRARIES})
+endif(${HDF5_FOUND})
+
 add_library(voxelizer STATIC voxelizer.cpp)
 target_compile_features(voxelizer PRIVATE cxx_std_17)
 target_link_libraries(voxelizer PUBLIC LibSL)
+target_include_directories(voxelizer PRIVATE ${XTL_INCLUDE_DIRS})
+
 set_target_properties(LibSL PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 set_target_properties(voxelizer PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
-
-set(XTL_INCLUDE_DIRS xtl/include xtensor/include xtensor-blas/include)
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-target_include_directories(VoxSurf PRIVATE ${HDF5_INCLUDE_DIRS})
-target_link_libraries(VoxSurf PRIVATE voxelizer ${HDF5_LIBRARIES})
 
 find_package(Python COMPONENTS Interpreter NumPy)
 add_subdirectory(pybind11)
