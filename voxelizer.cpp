@@ -183,8 +183,7 @@ static void fillInside(Array3D<uchar> &_voxs) {
 }
 
 template <typename T> xt::xarray<T> sl2xt(Array3D<T> voxels) {
-  static xt::xarray<T> xtvoxels =
-      xt::zeros<T>({voxels.xsize(), voxels.ysize(), voxels.zsize()});
+  xt::xarray<T> xtvoxels = xt::zeros<T>({voxels.xsize(), voxels.ysize(), voxels.zsize()});
   auto total_size = voxels.xsize() * voxels.ysize() * voxels.zsize();
   for (size_t i = 0; i < voxels.xsize(); i++) {
     for (size_t j = 0; j < voxels.ysize(); j++) {
@@ -193,7 +192,7 @@ template <typename T> xt::xarray<T> sl2xt(Array3D<T> voxels) {
       }
     }
   }
-  return std::move(xtvoxels);
+  return xtvoxels;
 }
 
 static xt::xarray<float> voxelize(const std::vector<v3i> &pts,
@@ -208,7 +207,6 @@ static xt::xarray<float> voxelize(const std::vector<v3i> &pts,
       rasterize<swizzle_zxy>(tris[t], pts, voxs); // zx view
     }
   }
-
   // add inner voxels
   switch (voxel_fill) {
   case Inside:
@@ -220,9 +218,10 @@ static xt::xarray<float> voxelize(const std::vector<v3i> &pts,
   default:
     break;
   }
+
   auto xtvoxels = sl2xt(voxs);
   xt::filter(xtvoxels, xtvoxels > 0) = 1.0f;
-  return std::move(xtvoxels);
+  return xtvoxels;
 }
 
 template <typename T> auto xt2v3(xt::xarray<T> v) {
@@ -271,16 +270,16 @@ xt::xarray<float> voxelize_mesh(const SimpleMesh &mesh,
     }
   }
 
-  return std::move(voxelize(pts, tris, resolution, voxel_fill));
+  return voxelize(pts, tris, resolution, voxel_fill);
 }
-
 xt::xarray<float> voxelize_stl(const std::string stl_file,
                                xt::xarray<int> voxel_resolution,
                                xt::xarray<float> bounds, VoxelFill voxel_fill) {
 
   // LibSL needs to register the mesh format, but it doesn't do it
   // automatically from the library, so we create this dummy instance
-  LibSL::Mesh::MeshFormat_stl _plugin_register_workaround;
+  static LibSL::Mesh::MeshFormat_stl _plugin_register_workaround;
+
   // load triangle mesh
   TriangleMesh_Ptr mesh(loadTriangleMesh(stl_file.c_str()));
 
@@ -338,6 +337,6 @@ xt::xarray<float> voxelize_stl(const std::string stl_file,
     }
   }
 
-  return std::move(voxelize(pts, tris, resolution, voxel_fill));
+  return voxelize(pts, tris, resolution, voxel_fill);;
 }
 } // namespace Voxelizer
