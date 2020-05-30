@@ -8,7 +8,7 @@ find_package(HDF5 COMPONENTS CXX)
 if (${HDF5_FOUND})
   add_executable(VoxSurf main.cpp)
   target_compile_features(VoxSurf PRIVATE cxx_std_17)
-  target_include_directories(VoxSurf PRIVATE ${HDF5_INCLUDE_DIRS})
+  target_include_directories(VoxSurf PRIVATE ${HDF5_INCLUDE_DIRS} ${XTL_INCLUDE_DIRS})
   target_link_libraries(VoxSurf PRIVATE voxelizer ${HDF5_LIBRARIES})
 endif(${HDF5_FOUND})
 
