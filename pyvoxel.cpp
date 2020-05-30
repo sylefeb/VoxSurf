@@ -28,7 +28,8 @@ inline xt::pyarray<float> voxelize_stl(const std::string &filename,
                                        const int resolution,
                                        const xt::pyarray<float> &bounds = {},
                                        const std::string &voxel_fill = "None") {
-  return Voxelizer::voxelize_stl(filename, resolution, str2vfill(voxel_fill));
+  return Voxelizer::voxelize_stl(filename, resolution, bounds,
+                                 str2vfill(voxel_fill));
 }
 
 inline xt::pyarray<float> voxelize(const xt::pyarray<float> &vertices,

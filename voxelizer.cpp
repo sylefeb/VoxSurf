@@ -183,7 +183,8 @@ static void fillInside(Array3D<uchar> &_voxs) {
 }
 
 template <typename T> xt::xarray<T> sl2xt(Array3D<T> voxels) {
-  xt::xarray<T> xtvoxels = xt::zeros<T>({voxels.xsize(), voxels.ysize(), voxels.zsize()});
+  xt::xarray<T> xtvoxels =
+      xt::zeros<T>({voxels.xsize(), voxels.ysize(), voxels.zsize()});
   auto total_size = voxels.xsize() * voxels.ysize() * voxels.zsize();
   for (size_t i = 0; i < voxels.xsize(); i++) {
     for (size_t j = 0; j < voxels.ysize(); j++) {
@@ -214,7 +215,9 @@ static xt::xarray<float> voxelize(const std::vector<v3i> &pts,
     break;
   case Robust:
     fillInsideVoting(voxs);
+    break;
   case None:
+    break;
   default:
     break;
   }
@@ -272,10 +275,10 @@ xt::xarray<float> voxelize_mesh(const SimpleMesh &mesh,
 
   return voxelize(pts, tris, resolution, voxel_fill);
 }
+
 xt::xarray<float> voxelize_stl(const std::string stl_file,
                                xt::xarray<int> voxel_resolution,
                                xt::xarray<float> bounds, VoxelFill voxel_fill) {
-
   // LibSL needs to register the mesh format, but it doesn't do it
   // automatically from the library, so we create this dummy instance
   static LibSL::Mesh::MeshFormat_stl _plugin_register_workaround;
@@ -289,7 +292,7 @@ xt::xarray<float> voxelize_stl(const std::string stl_file,
   LibSL::Geometry::AABox bbox;
   {
     std::array<v3f, 2> tmpbbox;
-    if (bounds.shape().size() == 0) {
+    if (bounds.shape().size() == 0 || !xt::any(bounds)) {
       tmpbbox[0] = mesh->bbox().minCorner();
       tmpbbox[1] = mesh->bbox().maxCorner();
     } else {
@@ -297,6 +300,7 @@ xt::xarray<float> voxelize_stl(const std::string stl_file,
       tmpbbox[0] = xt2v3<float>(xt::view(bounds, 0, xt::all()));
       tmpbbox[1] = xt2v3<float>(xt::view(bounds, 1, xt::all()));
     }
+
     bbox = LibSL::Geometry::AABox(tmpbbox[0], tmpbbox[1]);
   }
 
@@ -337,6 +341,6 @@ xt::xarray<float> voxelize_stl(const std::string stl_file,
     }
   }
 
-  return voxelize(pts, tris, resolution, voxel_fill);;
+  return voxelize(pts, tris, resolution, voxel_fill);
 }
 } // namespace Voxelizer
