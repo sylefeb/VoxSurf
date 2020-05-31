@@ -1,5 +1,8 @@
 # PyVoxSurf
 A Python C++ extension based on VoxSurf for voxelization of 3D meshes.
+
+**NOTE**: PyPi distribution is only compatible with Microsoft Windows
+
 ### Principle
  1. Rasterize triangles using three 2D axis aligned grids, using integer arithmetic (fixed floating point) for robust triangle interior checks
  2. [Optional] Fill interior of voxelized surface with either of two schemes: **Inside** - fastest method evaluates whether a voxel is inside from only one direction or **Robust** - evaluates whether a voxel is inside from all three directions and a voting determines final status

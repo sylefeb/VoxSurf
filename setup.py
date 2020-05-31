@@ -75,7 +75,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pyvoxsurf',
-    version='1.0.2',
+    version='1.0.4',
     author='Joseph Toombs',
     author_email='jtoombs719@gmail.com',
     url='https://github.com/jttoombs/PyVoxSurf',
@@ -84,5 +84,6 @@ setup(
     long_description_content_type='text/markdown',
     ext_modules=[CMakeExtension('pyvoxsurf')],
     cmdclass=dict(build_ext=CMakeBuild),
+    install_requires=['platform_system=="Windows"'],
     zip_safe=False,
 )
