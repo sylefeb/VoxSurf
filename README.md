@@ -7,6 +7,7 @@ A Python C++ extension based on VoxSurf for voxelization of 3D meshes.
 ## Usage
 
 pyvoxsurf.**voxelize_stl**
+
 | Argument  | Type | Default | Description |
 | ------------- | ------------- | ------------- | ------------- |
 | `filename`  | string  | | Filename of .stl file
@@ -36,13 +37,14 @@ vol._otf = otf
 vol._volume_property.set_scalar_opacity(otf)
 mlab.show()
 ```
-![volume1](docs/volume1.png)
+![volume1](https://raw.githubusercontent.com/jttoombs/PyVoxSurf/master/docs/volume1.png)
 
 pyvoxsurf.**voxelize**
+
 | Argument  | Type | Default | Description |
 | ------------- | ------------- | ------------- | ------------- |
 | `vertices`  | [nx3] array  | | Vertex positions in (x, y, z) coordinates
-| `triangle_vertices` | [nx3] array  | | Indices of connected vertices forming triangles of mesh
+| `triangle_indices` | [nx3] array  | | Indices of connected vertices forming triangles of mesh
 | `bounds`  | [2x3] array  | | Min and max bounds in (x, y, z) coordinates of desired voxel volume
 | `resolution` | integer  | | Number of voxel slices in the z-axis
 | `voxel_fill` | string  | "None" | [Optional] "None", "Inside", or "Robust" type of filling
@@ -78,7 +80,7 @@ vol._volume_property.set_scalar_opacity(otf)
 mlab.show()
 
 ```
- ![volume2](docs/volume2.png)
+ ![volume2](https://raw.githubusercontent.com/jttoombs/PyVoxSurf/master/docs/volume2.png)
 
 ## Credits
 

@@ -75,7 +75,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pyvoxsurf',
-    version='1.0',
+    version='1.0.2',
     author='Joseph Toombs',
     author_email='jtoombs719@gmail.com',
     url='https://github.com/jttoombs/PyVoxSurf',
