@@ -1,0 +1,12 @@
+README.md
+setup.py
+PyVoxSurf.egg-info/PKG-INFO
+PyVoxSurf.egg-info/SOURCES.txt
+PyVoxSurf.egg-info/dependency_links.txt
+PyVoxSurf.egg-info/not-zip-safe
+PyVoxSurf.egg-info/top_level.txt
+pyvoxsurf.egg-info/PKG-INFO
+pyvoxsurf.egg-info/SOURCES.txt
+pyvoxsurf.egg-info/dependency_links.txt
+pyvoxsurf.egg-info/not-zip-safe
+pyvoxsurf.egg-info/top_level.txt

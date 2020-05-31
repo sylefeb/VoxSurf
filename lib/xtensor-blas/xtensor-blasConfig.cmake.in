@@ -1,0 +1,35 @@
+############################################################################
+# Copyright (c) Johan Mabille, Sylvain Corlay and Wolf Vollprecht          #
+# Copyright (c) QuantStack                                                 #
+#                                                                          #
+# Distributed under the terms of the BSD 3-Clause License.                 #
+#                                                                          #
+# The full license is in the file LICENSE, distributed with this software. #
+############################################################################
+
+# xtensor-blas cmake module
+# This module sets the following variables in your project::
+#
+#   xtensor_blas_FOUND - true if xtensor-blas found on the system
+#   xtensor_blas_INCLUDE_DIR - the directory containing xtensor-blas headers
+#   xtensor_blas_LIBRARY - empty
+
+@PACKAGE_INIT@
+
+if(NOT TARGET @PROJECT_NAME@)
+  include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+  get_target_property(@PROJECT_NAME@_INCLUDE_DIRS xtensor-blas INTERFACE_INCLUDE_DIRECTORIES)
+  find_dependency(BLAS REQUIRED)
+  find_dependency(LAPACK REQUIRED)
+  target_link_libraries(xtensor-blas INTERFACE ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+  if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.8)
+    target_compile_features(xtensor-blas INTERFACE cxx_std_14)
+  endif()
+endif()
+
+set(PN xtensor_blas)
+set_and_check(TEMP_XTENSOR_BLAS_INCLUDE_DIR "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@")
+set(${PN}_INCLUDE_DIRS "${TEMP_XTENSOR_BLAS_INCLUDE_DIR}")
+unset(TEMP_XTENSOR_BLAS_INCLUDE_DIR)
+set(${PN}_LIBRARY "")
+check_required_components(${PN})

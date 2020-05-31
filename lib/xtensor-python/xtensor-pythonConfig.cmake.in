@@ -1,0 +1,22 @@
+############################################################################
+# Copyright (c) Wolf Vollprecht, Johan Mabille and Sylvain Corlay          #
+# Copyright (c) QuantStack                                                 #
+#                                                                          #
+# Distributed under the terms of the BSD 3-Clause License.                 #
+#                                                                          #
+# The full license is in the file LICENSE, distributed with this software. #
+############################################################################
+
+# xtensor-python cmake module
+# This module sets the following variables in your project::
+#
+#   xtensor-python_FOUND - true if xtensor-python found on the system
+#   xtensor-python_INCLUDE_DIRS - the directory containing xtensor-python headers
+#   xtensor-python_LIBRARY - empty
+
+@PACKAGE_INIT@
+
+if(NOT TARGET @PROJECT_NAME@)
+  include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+  get_target_property(@PROJECT_NAME@_INCLUDE_DIRS xtensor-python INTERFACE_INCLUDE_DIRECTORIES)
+endif()
