@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pyvoxsurf
-Version: 1.0.4
+Version: 1.0.6
 Summary: A Python C++ extension based on VoxSurf for voxelization of 3D meshes.
 Home-page: https://github.com/jttoombs/PyVoxSurf
 Author: Joseph Toombs
