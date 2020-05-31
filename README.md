@@ -6,7 +6,7 @@ A Python C++ extension based on VoxSurf for voxelization of 3D meshes.
 
 ## Usage
 
-PyVoxSurf.**voxelize_stl**
+pyvoxsurf.**voxelize_stl**
 | Argument  | Type | Default | Description |
 | ------------- | ------------- | ------------- | ------------- |
 | `filename`  | string  | | Filename of .stl file
@@ -38,7 +38,7 @@ mlab.show()
 ```
 ![volume1](docs/volume1.png)
 
-PyVoxSurf.**voxelize**
+pyvoxsurf.**voxelize**
 | Argument  | Type | Default | Description |
 | ------------- | ------------- | ------------- | ------------- |
 | `vertices`  | [nx3] array  | | Vertex positions in (x, y, z) coordinates
