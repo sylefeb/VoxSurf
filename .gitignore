@@ -4,3 +4,5 @@ path.h
 
 *.vox
 .vscode
+*.egg-info
+dist
