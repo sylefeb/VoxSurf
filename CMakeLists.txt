@@ -1,28 +1,33 @@
-cmake_minimum_required(VERSION 2.6)
-project(VoxSurf)
+cmake_minimum_required(VERSION 3.10)
+project(pyvoxsurf)
 
-INCLUDE_DIRECTORIES(
-  ${PROJECT_SOURCE_DIR}/LibSL-small
-  ${PROJECT_SOURCE_DIR}/LibSL-small/src/
-  ${PROJECT_SOURCE_DIR}/LibSL-small/src/LibSL  
-)
+add_subdirectory(lib/LibSL-small)
+set(XTL_INCLUDE_DIRS lib/xtl/include lib/xtensor/include
+                     lib/xtensor-python/include)
 
-CONFIGURE_FILE(
-  "${CMAKE_CURRENT_SOURCE_DIR}/path.h.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/path.h"
-  )
+find_package(HDF5 COMPONENTS CXX)
+if(${HDF5_FOUND})
+  add_executable(VoxSurfExample src/pyvoxsurf/example.cpp)
+  target_compile_features(VoxSurfExample PRIVATE cxx_std_17)
+  target_include_directories(VoxSurfExample PRIVATE ${HDF5_INCLUDE_DIRS}
+                                                    ${XTL_INCLUDE_DIRS})
+  target_link_libraries(VoxSurfExample PRIVATE voxelizer ${HDF5_LIBRARIES})
+endif(${HDF5_FOUND})
 
-ADD_EXECUTABLE(VoxSurf
-  main.cpp
-  LibSL-small/src/LibSL/Math/Math.cpp
-  LibSL-small/src/LibSL/Math/Vertex.cpp
-  LibSL-small/src/LibSL/Mesh/Mesh.cpp
-  LibSL-small/src/LibSL/Mesh/MeshFormat_stl.cpp
-  LibSL-small/src/LibSL/Mesh/VertexFormat_dynamic.cpp
-  LibSL-small/src/LibSL/System/System.cpp
-  LibSL-small/src/LibSL/CppHelpers/CppHelpers.cpp
-)
- 
-if(WIN32)
-target_link_libraries(VoxSurf shlwapi)
-endif(WIN32)
+add_library(voxelizer STATIC src/pyvoxsurf/voxelizer.cpp)
+target_compile_features(voxelizer PRIVATE cxx_std_17)
+target_link_libraries(voxelizer PUBLIC LibSL)
+target_include_directories(voxelizer PRIVATE ${XTL_INCLUDE_DIRS})
+
+set_target_properties(LibSL PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+set_target_properties(voxelizer PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
+find_package(Python COMPONENTS Interpreter NumPy)
+add_subdirectory(lib/pybind11)
+pybind11_add_module(pyvoxsurf src/pyvoxsurf/pyvoxsurf.cpp)
+target_compile_features(pyvoxsurf PUBLIC cxx_std_14)
+target_include_directories(
+  pyvoxsurf PRIVATE ${Python_INCLUDE_DIRS} ${Python_NumPy_INCLUDE_DIRS}
+                    ${XTL_INCLUDE_DIRS})
+target_link_libraries(pyvoxsurf PUBLIC voxelizer)
+install(TARGETS pyvoxsurf DESTINATION ${Python_SITELIB})

@@ -3,3 +3,6 @@ path.h
 *build*
 
 *.vox
+.vscode
+*.egg-info
+dist

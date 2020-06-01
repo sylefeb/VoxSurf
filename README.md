@@ -1,38 +1,94 @@
-# VoxSurf
-A simple, easily hackable C++ surface voxelizer (STL=>voxels)
+# PyVoxSurf
+A Python C++ extension based on VoxSurf for voxelization of 3D meshes.
 
-Takes as input a file 'model.stl' from the source directory.
-Outputs a voxel file named 'out.slab.vox' that can be read by MagicaVoxel https://ephtracy.github.io/
-This is the 'slab' format as exported by MagicaVoxel, which is the format used by the Slab6 editor http://www.advsys.net/ken/download.htm.
+**NOTE**: PyPi distribution is only compatible with Microsoft Windows
 
-This is meant as an introductory, easily modifiable implementation, and includes absoltutely zero optimization (e.g. SSE and  multi-core would come to mind) nor any option such as performing a conservative voxelization. For other implementations, see links below.
+### Principle
+ 1. Rasterize triangles using three 2D axis aligned grids, using integer arithmetic (fixed floating point) for robust triangle interior checks
+ 2. [Optional] Fill interior of voxelized surface with either of two schemes: **Inside** - fastest method evaluates whether a voxel is inside from only one direction or **Robust** - evaluates whether a voxel is inside from all three directions and a voting determines final status
 
-The basic principle is to rasterize triangles using three 2D axis aligned grids, using integer arithmetic (fixed floating point) for robust triangle interior checks.
+## Usage
 
-The code now supports filling the interior with voxels, with an optional voting scheme in case the input mesh has cracks (not strictly watertight). The scheme is quite simple and efficient. A bit is flipped every time a surface is contained in a voxel. After all surfaces are rasterized into voxels, if the bit is set the voxel is considered on the boundary, otherwise it is considered empty. Thus, only voxels crossed by odd number of surfaces are considered as belonging to the boundary (this is a form of winding number). The intervals in between boundary voxels are then filled. This is done for all three directions to allow for a voting scheme in case the input mesh has cracks.
+pyvoxsurf.**voxelize_stl**
 
-Very simple, CPU only, no dependencies and surprisingly efficient despite the straightforward implementation. Higher resolutions could easily be reached by not storing the voxels as a dense 3D array (e.g. use blocking or an octree).
+| Argument  | Type | Default | Description |
+| ------------- | ------------- | ------------- | ------------- |
+| `filename`  | string  | | Filename of .stl file
+| `resolution` | integer  | | Number of voxel slices in the z-axis
+| `bounds`  | [2x3] array  | | [Optional] Min and max bounds in (x, y, z) coordinates of desired voxel volume
+| `voxel_fill` | string  | "None" | [Optional] "None", "Inside", or "Robust" type of filling
 
-Here is a relatively large model voxelized at 1024^3 in ~1.5 seconds on a Core i5-3570, 3.4GHz. (Model: [Ford engine block by Ford](https://www.thingiverse.com/thing:40257), rendered in MagicaVoxel viewer).
 
-![voxels](vox1024.jpg)
+```python
+import pyvoxsurf
+from mayavi import mlab
 
-## Compiling
+volume1 = pyvoxsurf.voxelize_stl("model.stl",200,[],"Robust")
+print(volume1.shape)
 
-Clone the main repo, then enter the directory and type:<br>
+# Visualize voxelized model
+from tvtk.util.ctf import PiecewiseFunction
+mlab.figure(size=(800,800))
+vol = mlab.pipeline.volume(mlab.pipeline.scalar_field(volume1))
+mlab.title('Voxelized model',height=0.9,size=0.5)
+mlab.orientation_axes()
+otf = PiecewiseFunction()
+otf.add_point(0,0)
+otf.add_point(0.001, 1)
+otf.add_point(1,1)
+vol._otf = otf
+vol._volume_property.set_scalar_opacity(otf)
+mlab.show()
 ```
-git submodule init
-git submodule update
-cmake .
-make
+![volume1](https://raw.githubusercontent.com/jttoombs/PyVoxSurf/master/docs/volume1.png)
+
+pyvoxsurf.**voxelize**
+
+| Argument  | Type | Default | Description |
+| ------------- | ------------- | ------------- | ------------- |
+| `vertices`  | [nx3] array  | | Vertex positions in (x, y, z) coordinates
+| `triangle_indices` | [nx3] array  | | Indices of connected vertices forming triangles of mesh
+| `bounds`  | [2x3] array  | | Min and max bounds in (x, y, z) coordinates of desired voxel volume
+| `resolution` | integer  | | Number of voxel slices in the z-axis
+| `voxel_fill` | string  | "None" | [Optional] "None", "Inside", or "Robust" type of filling
+
+```python
+import pyvoxsurf
+import trimesh
+import numpy as np
+from mayavi import mlab
+
+mesh = trimesh.load("model.stl") # Load stl file
+
+# Find the max and min coordinates of the mesh to form a bounding box
+mesh_min_corner = [np.min(mesh.vertices[:,0]), np.min(mesh.vertices[:,1]), np.min(mesh.vertices[:,2])]
+mesh_max_corner = [np.max(mesh.vertices[:,0]), np.max(mesh.vertices[:,1]), np.max(mesh.vertices[:,2])]
+bounds = np.stack((mesh_min_corner,mesh_max_corner))
+
+volume2 = pyvoxsurf.voxelize(mesh.vertices,mesh.faces,bounds,100,"Inside")
+print(volume2.shape)
+
+# Visualize voxelized model
+from tvtk.util.ctf import PiecewiseFunction
+mlab.figure(size=(800,800))
+vol = mlab.pipeline.volume(mlab.pipeline.scalar_field(volume2))
+mlab.title('Voxelized model',height=0.9,size=0.5)
+mlab.orientation_axes()
+otf = PiecewiseFunction()
+otf.add_point(0,0)
+otf.add_point(0.001, 1)
+otf.add_point(1,1)
+vol._otf = otf
+vol._volume_property.set_scalar_opacity(otf)
+mlab.show()
+
 ```
+ ![volume2](https://raw.githubusercontent.com/jttoombs/PyVoxSurf/master/docs/volume2.png)
 
-Tested with Viusal Studio 2017 and gcc 6.2.1
-
-## Links
- * CUDA voxelization (GPU, fast) https://github.com/Forceflow/cuda_voxelizer
- * Michael Schwarz and Hans-Peter Seidel paper on the topic http://research.michael-schwarz.com/publ/files/vox-siga10.pdf
- * Header only voxelization in C https://github.com/karimnaaji/voxelizer
- 
 ## Credits
-The included STL model is [3D knot by chylld](https://www.thingiverse.com/thing:5506/#files)
+
+ - [VoxSurf](https://github.com/sylefeb/VoxSurf) by sylefeb 
+ - [VoxSurf Pybind11 bindings](https://github.com/mjgalindo/VoxSurf) by mjgalindo
+ - PyVoxSurf packaging and documentation by jttoombs 
+ - STL model of [3D knot by
+   chylld](https://www.thingiverse.com/thing:5506/#files)
