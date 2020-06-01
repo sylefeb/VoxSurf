@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 project(pyvoxsurf)
 
 add_subdirectory(lib/LibSL-small)
-set(XTL_INCLUDE_DIRS lib/xtl/include lib/xtensor/include lib/xtensor-blas/include lib/xtensor-python/include)
+set(XTL_INCLUDE_DIRS lib/xtl/include lib/xtensor/include
+                     lib/xtensor-blas/include lib/xtensor-python/include)
 
 find_package(HDF5 COMPONENTS CXX)
-if (${HDF5_FOUND})
-  add_executable(pyvoxsurf main.cpp)
-  target_compile_features(pyvoxsurf PRIVATE cxx_std_17)
-  target_include_directories(pyvoxsurf PRIVATE ${HDF5_INCLUDE_DIRS} ${XTL_INCLUDE_DIRS})
-  target_link_libraries(pyvoxsurf PRIVATE voxelizer ${HDF5_LIBRARIES})
+if(${HDF5_FOUND})
+  add_executable(VoxSurfExample src/pyvoxsurf/example.cpp)
+  target_compile_features(VoxSurfExample PRIVATE cxx_std_17)
+  target_include_directories(VoxSurfExample PRIVATE ${HDF5_INCLUDE_DIRS}
+                                                    ${XTL_INCLUDE_DIRS})
+  target_link_libraries(VoxSurfExample PRIVATE voxelizer ${HDF5_LIBRARIES})
 endif(${HDF5_FOUND})
 
 add_library(voxelizer STATIC src/pyvoxsurf/voxelizer.cpp)
@@ -26,6 +28,6 @@ pybind11_add_module(pyvoxsurf src/pyvoxsurf/pyvoxsurf.cpp)
 target_compile_features(pyvoxsurf PUBLIC cxx_std_14)
 target_include_directories(
   pyvoxsurf PRIVATE ${Python_INCLUDE_DIRS} ${Python_NumPy_INCLUDE_DIRS}
-                  ${XTL_INCLUDE_DIRS} xtensor-python/include)
+                    ${XTL_INCLUDE_DIRS})
 target_link_libraries(pyvoxsurf PUBLIC voxelizer)
 install(TARGETS pyvoxsurf DESTINATION ${Python_SITELIB})
