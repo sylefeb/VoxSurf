@@ -1,7 +1,0 @@
-name: xtensor-python-docs
-
-channels:
-  - QuantStack
-
-dependencies:
-  - breathe

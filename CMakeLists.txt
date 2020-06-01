@@ -3,7 +3,7 @@ project(pyvoxsurf)
 
 add_subdirectory(lib/LibSL-small)
 set(XTL_INCLUDE_DIRS lib/xtl/include lib/xtensor/include
-                     lib/xtensor-blas/include lib/xtensor-python/include)
+                     lib/xtensor-python/include)
 
 find_package(HDF5 COMPONENTS CXX)
 if(${HDF5_FOUND})

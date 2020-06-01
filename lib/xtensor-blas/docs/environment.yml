@@ -1,7 +1,0 @@
-name: xtensor-blas-docs
-
-channels:
-  - QuantStack
-
-dependencies:
-  - breathe
