@@ -96,7 +96,7 @@ void saveAsVox(const char *fname, const Array3D<uchar>& voxs)
 
 // --------------------------------------------------------------
 
-inline bool isInTriangle(int i, int j, const v3i& p0, const v3i& p1, const v3i& p2, int& _depth)
+inline bool isInTriangle(int i, int j, const v3i& p0, const v3i& p1, const v3i& p2, int& _depth,int& _aligned)
 {
   v2i delta_p0 = v2i(i, j) - v2i(p0);
   v2i delta_p1 = v2i(i, j) - v2i(p1);
@@ -108,8 +108,11 @@ inline bool isInTriangle(int i, int j, const v3i& p0, const v3i& p1, const v3i& 
   int64_t c0 = (int64_t)delta_p0[0] * (int64_t)delta10[1] - (int64_t)delta_p0[1] * (int64_t)delta10[0];
   int64_t c1 = (int64_t)delta_p1[0] * (int64_t)delta21[1] - (int64_t)delta_p1[1] * (int64_t)delta21[0];
   int64_t c2 = (int64_t)delta_p2[0] * (int64_t)delta02[1] - (int64_t)delta_p2[1] * (int64_t)delta02[0];
+  // are we inside the triangle? (ignores orientation)
   bool inside = (c0 <= 0 && c1 <= 0 && c2 <= 0) || (c0 >= 0 && c1 >= 0 && c2 >= 0);
-
+  // explicitly tracks cases where the sampling location is exactly on an edge
+  _aligned = (c0 == 0) ? 0 : ((c1 == 0) ? 1 : ((c2 == 0) ? 2 : -1));
+  // compute depth by barycentric interpolation
   if (inside) {
     int64_t area = c0 + c1 + c2;
     int64_t b0 = (c1 << 10) / area;
@@ -175,16 +178,23 @@ void rasterize(
   pixbx.addPoint(v2i(tripts[2]) / FP_SCALE);
   for (int j = pixbx.minCorner()[1]; j <= pixbx.maxCorner()[1]; j++) {
     for (int i = pixbx.minCorner()[0]; i <= pixbx.maxCorner()[0]; i++) {
-      int depth;
+      int depth; int aligned;
       if (isInTriangle(
         (i << FP_POW) + (1 << (FP_POW - 1)), // centered
         (j << FP_POW) + (1 << (FP_POW - 1)), // centered
-        tripts[0], tripts[1], tripts[2], depth)) {
+        tripts[0], tripts[1], tripts[2], depth, aligned)) {
         v3i vx = swizzler.backward(v3i(i, j, depth >> FP_POW));
         // tag the voxel as occupied
-        // NOTE: voxels are likely to be hit multiple times (e.g. thin features)
-        //       we flip the bit every time a hit occurs in a voxel
-        _voxs.at(vx[0], vx[1], vx[2]) = ( _voxs.at(vx[0], vx[1], vx[2]) ^ swizzler.along() );
+        // NOTE: Voxels are likely to be hit multiple times (e.g. thin features)
+        //       we flip the bit every time a hit occurs in a voxel.
+        // NOTE: Deals with special case of perfect alignment with an edge,
+        //       otherwise triangles on both sides are counted producing a hole.
+        //       When aligned we keep a single triangle, the one where the first
+        //       edge index is smallest ; works only if the mesh is properly indexed.
+        //       (see call to mergeVerticesExact after loading the model)
+        if (aligned == -1 || tri[aligned] < tri[(aligned + 1) % 3]) {
+          _voxs.at(vx[0], vx[1], vx[2]) = (_voxs.at(vx[0], vx[1], vx[2]) ^ swizzler.along());
+        }
       }
     }
   }
@@ -282,6 +292,9 @@ int main(int argc, char **argv)
 
     // load triangle mesh
     TriangleMesh_Ptr mesh(loadTriangleMesh(SRC_PATH "/model.stl"));
+    // merge where possible, producing an indexed mesh from the coordinates
+    mesh->mergeVerticesExact();
+
     // produce (fixed fp) integer vertices and triangles
     std::vector<v3i> pts;
     std::vector<v3u> tris;
@@ -301,6 +314,7 @@ int main(int argc, char **argv)
         v3i ipt  = v3i(clamp(round(bxpt), v3f(0.0f), BOX_SCALE - v3f(1.0f)));
         pts[p]   = ipt;
       }
+
       // prepare triangles
       tris.reserve(mesh->numTriangles());
       ForIndex(t, mesh->numTriangles()) {
